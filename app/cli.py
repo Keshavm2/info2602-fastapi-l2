@@ -20,7 +20,7 @@ def initialize():
 
 @cli.command()
 def get_user(username:str):
-    with get_session() as db: # Get a connection to the database
+    with get_session() as db: 
         user = db.exec(select(User).where(User.username == username)).first()
         if not user:
             print(f'{username} not found!')
@@ -40,7 +40,7 @@ def get_all_users():
 
 @cli.command()
 def change_email(username: str, new_email:str):
-    with get_session() as db: # Get a connection to the database
+    with get_session() as db: 
         user = db.exec(select(User).where(User.username == username)).first()
         if not user:
             print(f'{username} not found! Unable to update email.')
@@ -52,13 +52,27 @@ def change_email(username: str, new_email:str):
 
 @cli.command()
 def create_user(username: str, email:str, password: str):
-    # The code for task 7 goes here. Once implemented, remove the line below that says "pass"
-    pass
+    with get_session() as db: 
+        newuser = User(username, email, password)
+        try:
+            db.add(newuser)
+            db.commit()
+        except IntegrityError as e:
+            db.rollback() 
+            print("Username or email already taken!") 
+        else:
+            print(newuser) 
 
 @cli.command()
 def delete_user(username: str):
-    # The code for task 8 goes here. Once implemented, remove the line below that says "pass"
-    pass
+    with get_session() as db:
+        user = db.exec(select(User).where(User.username == username)).first()
+        if not user:
+            print(f'{username} not found! Unable to delete user.')
+            return
+        db.delete(user)
+        db.commit()
+        print(f'{username} deleted')
 
 
 if __name__ == "__main__":
