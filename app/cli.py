@@ -4,6 +4,7 @@ from app.models import User
 from fastapi import Depends
 from sqlmodel import select
 from sqlalchemy.exc import IntegrityError
+from typing import Annotated
 
 cli = typer.Typer()
 
@@ -18,8 +19,9 @@ def initialize():
         db.refresh(bob) # Update the user (we use this to get the ID from the db)
         print("Database Initialized")
 
+"Retrieve a user by their username"
 @cli.command()
-def get_user(username:str):
+def get_user(username: Annotated[str, typer.Argument(help="The username of the user to retrieve")]):
     with get_session() as db: 
         user = db.exec(select(User).where(User.username == username)).first()
         if not user:
@@ -27,6 +29,7 @@ def get_user(username:str):
             return
         print(user)
 
+"Get all users in the database."
 @cli.command()
 def get_all_users():
     with get_session() as db:
@@ -37,9 +40,10 @@ def get_all_users():
             for user in all_users:
                 print(user)
 
-
+"Change the email of a user by their username."
 @cli.command()
-def change_email(username: str, new_email:str):
+def change_email(username: Annotated[str, typer.Argument(help="The username of the user to update")],
+                new_email: Annotated[str, typer.Argument(help="The new email address for the user")]):
     with get_session() as db: 
         user = db.exec(select(User).where(User.username == username)).first()
         if not user:
@@ -50,8 +54,11 @@ def change_email(username: str, new_email:str):
         db.commit()
         print(f"Updated {user.username}'s email to {user.email}")
 
+"Create a new user with a username, email and password"
 @cli.command()
-def create_user(username: str, email:str, password: str):
+def create_user(username: Annotated[str, typer.Argument(help="The username of the user to update")],
+                new_email: Annotated[str, typer.Argument(help="The new email address for the user")],
+                password: Annotated[str, typer.Argument(help="The password for the new user")]):
     with get_session() as db: 
         newuser = User(username, email, password)
         try:
@@ -63,8 +70,9 @@ def create_user(username: str, email:str, password: str):
         else:
             print(newuser) 
 
+"Delete a user by their username"
 @cli.command()
-def delete_user(username: str):
+def delete_user(username: Annotated[str, typer.Argument(help="The username of the user to delete")]):
     with get_session() as db:
         user = db.exec(select(User).where(User.username == username)).first()
         if not user:
@@ -72,8 +80,31 @@ def delete_user(username: str):
             return
         db.delete(user)
         db.commit()
-        print(f'{username} deleted')
+        print(f'{username} deleted') 
+
+"Search for users by a partial match on their username or email"
+@cli.command()
+def partial_match(search: Annotated[str, typer.Argument(help="The partial username or email to search for")]):
+    with get_session() as db:
+        users = db.exec(select(User).where(User.username.contains(search)| User.email.contains(search))).all()
+
+        if not users:
+            print("User not found")
+        else:
+            for user in users:
+                print(user)
+
+"Get a paginated list of users"
+@cli.command()
+def first_users( limit: Annotated[int, typer.Argument(help="Number of users to return (default 10)")] = 10,
+                 offset: Annotated[int, typer.Argument(help="Number of users to skip (default 0)")] = 0):
+    with get_session() as db:
+        users = db.exec(select(User).offset(offset).limit(limit)).all()
+        if not users:
+            print("User not found")
+        else:
+            for user in users:
+                print(user)
 
 
-if __name__ == "__main__":
-    cli()
+if __name__ == "__main__":    cli()
